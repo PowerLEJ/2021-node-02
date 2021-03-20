@@ -1,5 +1,10 @@
 const express = require('express');
 const app = express();
+const path = require('path');
+const createError = require('http-errors');
+const { zeroPlus, nowDate } = require('./modules/util'); // { zeroPlus, nowDate }
+
+console.log(path.join(__dirname, 'public'));
 
 app.listen(3000, () => {
     console.log('=====================');
@@ -7,22 +12,39 @@ app.listen(3000, () => {
     console.log('=====================');
 });
 
-app.get('/', (req, res) => {
-    const myName = 'lee'
-    res.send('<h1>Hello ' + myName + ' </h1>')
+app.set('view engine', 'pug')
+app.set('views', path.join(__dirname, './views'))
+app.locals.pretty = true
+
+
+app.use('/', express.static(path.join(__dirname, './public')))
+app.use('/uploads', express.static(path.join(__dirname, './storages')))
+
+// Middleware
+app.use((req, res, next) => {
+    req.nowTime = nowDate();
+    next()
 })
 
-app.get('/hello', function(req, res) {
-    res.send('<h1>Hello, Express</h1>')
+// Router
+const userRouter = require('./routes/user')
+const boardRouter = require('./routes/board')
+app.use('/user', userRouter)
+app.use('/board', boardRouter)
+
+
+// app.get('/hello', (req, res, next) => {
+//     next(createError(500, {msg: 'DB에러가 발생하였습니다.'}))
+// })
+
+// Error
+app.use((req, res, next) => {
+    const msg = '<h1 style="margin: 100px;">Error 404</h1><div>' + nowDate() + '</div>';
+    next(createError(404, {code: 404, msg}))
+    // next({code: 404, msg})
 })
 
-app.get('/api', (req, res) => {
-    const id = req.query.id;
-    const users =  [
-            { id: 1, name: '홍길동', kor: 70},
-            { id: 2, name: '홍길순', kor: 75},
-            { id: 3, name: '홍길만', kor: 80},
-    ]
-    var sendUser = id ? users.filter(v => id == v.id) : [...users];
-    res.json(sendUser)
+app.use((err, req, res, next) => {
+    console.log(err);
+    res.send(err.msg)
 })
